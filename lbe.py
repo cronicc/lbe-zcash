@@ -112,20 +112,24 @@ class Xcoind(object):
     def getsimpletx(self, txid):
         tx = self.gettx(txid)
         vins = []
-        if 'coinbase' in tx['vin'][0]:
-            coinbase = tx['vin'][0]['coinbase']
-            coinbase_text = ''.join([i if ord(i) < 128 else '.' for i in binascii.unhexlify(coinbase)])
+        if tx['vin']:
+            if 'coinbase' in tx['vin'][0]:
+                coinbase = tx['vin'][0]['coinbase']
+                coinbase_text = ''.join([i if ord(i) < 128 else '.' for i in binascii.unhexlify(coinbase)])
+            else:
+                coinbase = None
+                coinbase_text = None
+                for vin in tx['vin']:
+                    in_tx = self.gettx(vin['txid'])
+                    for in_vout in in_tx['vout']:
+                        if vin['vout'] == in_vout['n']:
+                            vins.append({
+                                'address': in_vout['scriptPubKey']['addresses'][0] if 'addresses' in in_vout['scriptPubKey'] else None,
+                                'value': in_vout['value'],
+                            })
         else:
             coinbase = None
             coinbase_text = None
-            for vin in tx['vin']:
-                in_tx = self.gettx(vin['txid'])
-                for in_vout in in_tx['vout']:
-                    if vin['vout'] == in_vout['n']:
-                        vins.append({
-                            'address': in_vout['scriptPubKey']['addresses'][0] if 'addresses' in in_vout['scriptPubKey'] else None,
-                            'value': in_vout['value'],
-                        })
 
         vouts = []
         for vout in tx['vout']:
